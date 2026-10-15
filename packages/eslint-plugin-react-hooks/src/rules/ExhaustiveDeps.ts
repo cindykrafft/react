@@ -482,14 +482,19 @@ const rule = {
       // Is this reference inside a cleanup function for this effect node?
       // We can check by traversing scopes upwards from the reference, and checking
       // if the last "return () => " we encounter is located directly inside the effect.
+      // The cleanup may also be returned implicitly from a concise arrow body,
+      // e.g. `useEffect(() => () => { ... })`.
       function isInsideEffectCleanup(reference: Scope.Reference): boolean {
         let curScope: Scope.Scope | null = reference.from;
         let isInReturnedFunction = false;
         while (curScope != null && curScope.block !== node) {
           if (curScope.type === 'function') {
+            const parent = curScope.block.parent;
             isInReturnedFunction =
-              curScope.block.parent != null &&
-              curScope.block.parent.type === 'ReturnStatement';
+              parent != null &&
+              (parent.type === 'ReturnStatement' ||
+                (parent.type === 'ArrowFunctionExpression' &&
+                  parent.body === curScope.block));
           }
           curScope = curScope.upper;
         }
